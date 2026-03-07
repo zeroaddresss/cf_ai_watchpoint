@@ -1,0 +1,30 @@
+{
+	"name": "cf_ai_watchpoint",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"check": "tsc --noEmit",
+		"test": "vitest",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.12.4",
+		"@types/node": "25.3.5",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "4.71.0"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "1.26.0",
+		"@x402/core": "2.6.0",
+		"@x402/evm": "2.6.0",
+		"@x402/hono": "2.6.0",
+		"@x402/mcp": "2.6.0",
+		"agents": "0.7.5",
+		"hono": "4.12.5",
+		"zod": "4.3.6"
+	}
+}
