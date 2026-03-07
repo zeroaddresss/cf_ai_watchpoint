@@ -12,7 +12,12 @@
 		"global_fetch_strictly_public"
 	],
 	"ai": {
-		"binding": "AI"
+		"binding": "AI",
+		"remote": true
+	},
+	"browser": {
+		"binding": "BROWSER",
+		"remote": true
 	},
 	"durable_objects": {
 		"bindings": [
@@ -20,6 +25,13 @@
 			{ "name": "WATCHPOINT_MCP", "class_name": "WatchpointMcpAgent" }
 		]
 	},
+	"workflows": [
+		{
+			"binding": "WATCH_WORKFLOW",
+			"name": "watchpoint-workflow",
+			"class_name": "WatchWorkflow"
+		}
+	],
 	"migrations": [
 		{
 			"tag": "v1",
@@ -36,6 +48,7 @@
 	},
 	"vars": {
 		"WATCHPOINT_AI_GATEWAY_ID": "",
+		"WATCHPOINT_CAPTURE_MODE": "browser",
 		"WATCHPOINT_DEV_PAYMENT_BYPASS": "watchpoint-local-paid",
 		"WATCHPOINT_FACILITATOR_URL": "https://x402.org/facilitator",
 		"WATCHPOINT_USE_WORKERS_AI": "true",

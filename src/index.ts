@@ -5,6 +5,7 @@ import { WatchpointMcpAgent } from "./mcp";
 import { createPaidRouteMiddleware } from "./payment";
 import { getPricingTier, listPricingTiers, primaryModelDisplayName, primaryModelDocsUrl } from "./pricing";
 import { createWatch, getWatchDetail, triggerRescan } from "./watch-service";
+import { WatchWorkflow } from "./watch-workflow";
 
 const app = new Hono<{ Bindings: Env }>();
 const mcpHandler = WatchpointMcpAgent.serve("/mcp", { binding: "WATCHPOINT_MCP" });
@@ -86,7 +87,7 @@ app.post("/api/watch/:watchId/rescan", async (context) => {
 		return context.json({ error: "Watch not found." }, 404);
 	}
 
-	return context.json(detail);
+	return context.json(detail, 202);
 });
 
 export default {
@@ -109,7 +110,7 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-export { WatchAgent, WatchpointMcpAgent };
+export { WatchAgent, WatchWorkflow, WatchpointMcpAgent };
 
 async function safeJson(request: Request): Promise<unknown> {
 	try {

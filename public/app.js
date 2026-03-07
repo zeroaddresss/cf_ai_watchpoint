@@ -8,6 +8,7 @@ const form = document.getElementById("watch-form");
 const rescanButton = document.getElementById("rescan-button");
 
 let currentWatchId = null;
+let currentRunCount = 0;
 let pricing = [];
 
 init().catch((error) => {
@@ -52,10 +53,12 @@ form.addEventListener("submit", async (event) => {
 	}
 
 	currentWatchId = detail.watch.id;
-	statusNode.textContent = `Watch ${detail.watch.id} created. Remaining runs: ${detail.watch.remainingRuns}.`;
+	currentRunCount = detail.watch.runCount;
+	statusNode.textContent = `Watch ${detail.watch.id} created. Baseline scan queued on the workflow.`;
 	rescanButton.disabled = false;
 	renderDetail(detail);
 	renderCurlSnippet();
+	await refreshWatch(detail.watch.id, currentRunCount + 1, "Baseline scan complete.");
 });
 
 rescanButton.addEventListener("click", async () => {
@@ -63,7 +66,7 @@ rescanButton.addEventListener("click", async () => {
 		return;
 	}
 
-	statusNode.textContent = "Running manual re-scan...";
+	statusNode.textContent = "Queueing manual re-scan...";
 	const response = await fetch(`/api/watch/${currentWatchId}/rescan`, {
 		method: "POST",
 	});
@@ -73,9 +76,35 @@ rescanButton.addEventListener("click", async () => {
 		return;
 	}
 
-	statusNode.textContent = `Re-scan complete. Remaining runs: ${detail.watch.remainingRuns}.`;
 	renderDetail(detail);
+	await refreshWatch(currentWatchId, currentRunCount + 1, "Manual re-scan complete.");
 });
+
+async function refreshWatch(watchId, expectedRunCount, successMessage) {
+	const detail = await pollWatchDetail(watchId, (candidate) => candidate.watch.runCount >= expectedRunCount);
+	currentRunCount = detail.watch.runCount;
+	statusNode.textContent = `${successMessage} Remaining runs: ${detail.watch.remainingRuns}.`;
+	renderDetail(detail);
+}
+
+async function pollWatchDetail(watchId, predicate) {
+	const startedAt = Date.now();
+	while (Date.now() - startedAt < 8000) {
+		const response = await fetch(`/api/watch/${watchId}`);
+		if (response.ok) {
+			const detail = await response.json();
+			if (predicate(detail)) {
+				return detail;
+			}
+
+			renderDetail(detail);
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+
+	throw new Error(`Timed out while waiting for watch ${watchId}.`);
+}
 
 function renderPricingCards(tiers, primaryModelDisplayName, primaryModelDocsUrl) {
 	tiersNode.innerHTML = "";
@@ -111,10 +140,14 @@ function renderDetail(detail) {
 		const card = document.createElement("article");
 		card.className = "card";
 		const issues = run.findings.map((finding) => `${finding.severity}: ${finding.title}`).join("<br />");
+		const steps = run.steps
+			.map((step) => `${step.stepIndex + 1}. ${step.title} (${step.primaryActions.join(", ") || "no primary actions"})`)
+			.join("<br />");
 		card.innerHTML = `
 			<strong>${run.kind.toUpperCase()}</strong>
 			<p>${run.pageTitle}</p>
 			<p>${run.narrativeSummary}</p>
+			<p><strong>Captured steps:</strong><br />${steps}</p>
 			<p><strong>Issues:</strong><br />${issues}</p>
 			<p><strong>Diff:</strong> ${run.diffReport.stabilityNote}</p>
 		`;

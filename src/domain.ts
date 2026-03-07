@@ -2,11 +2,13 @@ import { getPricingTier, type ModelName, type PricingTier, type PricingTierId } 
 
 export type WatchId = string;
 export type RunId = string;
+export type WorkflowId = string;
 
 export type FindingSeverity = "info" | "warn" | "critical";
 export type WatchPhase = "idle" | "monitoring";
 export type RunKind = "baseline" | "rescan";
-export type RunStatus = "succeeded" | "failed";
+export type RunStatus = "queued" | "running" | "succeeded" | "failed";
+export type WorkflowTrigger = "initial" | "automatic" | "manual";
 
 export type WatchFinding = {
 	id: string;
@@ -23,16 +25,28 @@ export type DiffReport = {
 	stabilityNote: string;
 };
 
+export type CapturedStep = {
+	stepIndex: number;
+	url: string;
+	title: string;
+	text: string;
+	textDigest: string;
+	primaryActions: string[];
+	screenshotDataUrl: string | null;
+	capturedAt: string;
+};
+
 export type WatchRun = {
 	id: RunId;
 	kind: RunKind;
 	status: RunStatus;
 	startedAt: string;
-	completedAt: string;
+	completedAt: string | null;
 	modelName: ModelName;
 	pageTitle: string;
 	canonicalUrl: string;
 	contentDigest: string;
+	steps: CapturedStep[];
 	narrativeSummary: string;
 	findings: WatchFinding[];
 	diffReport: DiffReport;
@@ -48,6 +62,35 @@ export type WatchConfig = {
 	createdAt: string;
 };
 
+export type ActiveWorkflow = {
+	workflowId: WorkflowId;
+	workflowName: "WATCH_WORKFLOW";
+	kind: RunKind;
+	trigger: WorkflowTrigger;
+	status: "queued" | "running";
+	queuedAt: string;
+	startedAt: string | null;
+};
+
+export type WatchWorkflowProgress = {
+	kind: RunKind;
+	status: "running";
+	startedAt: string;
+};
+
+export type WatchWorkflowParams = {
+	targetUrl: string;
+	pricingTierId: PricingTierId;
+	includedRuns: number;
+	cadenceMinutes: number;
+};
+
+export type WatchWorkflowResult = {
+	kind: RunKind;
+	trigger: WorkflowTrigger;
+	run: WatchRun;
+};
+
 export type IdleWatchState = {
 	phase: "idle";
 };
@@ -57,7 +100,7 @@ export type MonitoringWatchState = {
 	config: WatchConfig;
 	runs: WatchRun[];
 	remainingRuns: number;
-	scheduleId: string | null;
+	activeWorkflow: ActiveWorkflow | null;
 	lastError: string | null;
 };
 
@@ -66,13 +109,14 @@ export type WatchState = IdleWatchState | MonitoringWatchState;
 export type WatchSnapshot = {
 	id: string;
 	targetUrl: string;
-	status: "active" | "exhausted" | "failed";
+	status: "queued" | "running" | "active" | "exhausted" | "failed";
 	pricingTier: PricingTier;
 	remainingRuns: number;
 	createdAt: string;
 	lastRunAt: string | null;
 	runCount: number;
 	lastError: string | null;
+	activeWorkflow: ActiveWorkflow | null;
 };
 
 export type WatchDetail = {
@@ -138,6 +182,34 @@ export function createWatchConfig(id: WatchId, input: CreateWatchInput, createdA
 	};
 }
 
+export function createActiveWorkflow(
+	workflowId: WorkflowId,
+	kind: RunKind,
+	trigger: WorkflowTrigger,
+	queuedAt: string,
+): ActiveWorkflow {
+	return {
+		workflowId,
+		workflowName: "WATCH_WORKFLOW",
+		kind,
+		trigger,
+		status: "queued",
+		queuedAt,
+		startedAt: null,
+	};
+}
+
+export function markWorkflowRunning(
+	workflow: ActiveWorkflow,
+	progress: WatchWorkflowProgress,
+): ActiveWorkflow {
+	return {
+		...workflow,
+		status: progress.status,
+		startedAt: progress.startedAt,
+	};
+}
+
 export function initialWatchState(): WatchState {
 	return { phase: "idle" };
 }
@@ -157,13 +229,14 @@ export function toWatchDetail(state: WatchState): WatchDetail | null {
 		watch: {
 			id: state.config.id,
 			targetUrl: state.config.targetUrl,
-			status: state.remainingRuns > 0 ? "active" : state.lastError === null ? "exhausted" : "failed",
+			status: deriveWatchStatus(state),
 			pricingTier,
 			remainingRuns: state.remainingRuns,
 			createdAt: state.config.createdAt,
 			lastRunAt: lastRun?.completedAt ?? null,
 			runCount: state.runs.length,
 			lastError: state.lastError,
+			activeWorkflow: state.activeWorkflow,
 		},
 		runs: state.runs,
 	};
@@ -205,6 +278,22 @@ export function createDiffReport(previousRun: WatchRun | null, currentFindings: 
 			? "Meaningful changes detected since the previous scan."
 			: "No significant changes detected since the previous scan.",
 	};
+}
+
+function deriveWatchStatus(state: MonitoringWatchState): WatchSnapshot["status"] {
+	if (state.activeWorkflow !== null) {
+		return state.activeWorkflow.status;
+	}
+
+	if (state.lastError !== null && state.runs.length === 0) {
+		return "failed";
+	}
+
+	if (state.remainingRuns === 0) {
+		return state.lastError === null ? "exhausted" : "failed";
+	}
+
+	return "active";
 }
 
 function normalizeTargetUrl(targetUrl: string): string | null {

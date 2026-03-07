@@ -7,6 +7,7 @@ export default defineWorkersConfig({
 				remoteBindings: false,
 				miniflare: {
 					bindings: {
+						WATCHPOINT_CAPTURE_MODE: "fixture",
 						WATCHPOINT_USE_WORKERS_AI: "false",
 					},
 				},

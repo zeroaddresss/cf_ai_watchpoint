@@ -1,11 +1,12 @@
+import { createPaymentWrapper, x402ResourceServer } from "@x402/mcp";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
-import { createPaymentWrapper, x402ResourceServer } from "@x402/mcp";
 import { McpAgent } from "agents/mcp";
 import { getAgentByName } from "agents";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getPricingTier, listPricingTiers } from "./pricing";
+import { buildTierPaymentRequirements } from "./payment";
 
 type TextToolResult = {
 	content: Array<{
@@ -94,15 +95,7 @@ export class WatchpointMcpAgent extends McpAgent<Env, { ready: boolean }> {
 			this.env.WATCHPOINT_X402_NETWORK,
 			new ExactEvmScheme(),
 		);
-		await resourceServer.initialize();
-
-		const accepts = await resourceServer.buildPaymentRequirements({
-			scheme: "exact",
-			network: this.env.WATCHPOINT_X402_NETWORK,
-			payTo: this.env.WATCHPOINT_X402_PAY_TO,
-			price: tier.x402Price,
-		});
-
+		const accepts = await buildTierPaymentRequirements(this.env, tierId);
 		return createPaymentWrapper(resourceServer, { accepts });
 	}
 
