@@ -3,15 +3,16 @@ import {
 	createActiveWorkflow,
 	createWatchConfig,
 	initialWatchState,
+	markWorkflowQueued,
 	markWorkflowRunning,
+	markWorkflowWaiting,
 	toWatchDetail,
 	type CreateWatchInput,
-	type MonitoringWatchState,
+	type ManualRescanResult,
 	type WatchDetail,
 	type WatchState,
 	type WatchWorkflowProgress,
 	type WatchWorkflowResult,
-	type WorkflowTrigger,
 } from "./domain";
 
 export class WatchAgent extends Agent<Env, WatchState> {
@@ -50,34 +51,45 @@ export class WatchAgent extends Agent<Env, WatchState> {
 	}
 
 	@callable()
-	async performManualRescan(): Promise<WatchDetail | null> {
+	async performManualRescan(): Promise<ManualRescanResult | null> {
 		if (this.state.phase !== "monitoring") {
 			return null;
 		}
 
-		if (this.state.activeWorkflow !== null) {
-			const requestedAt = new Date().toISOString();
-			await this.sendWorkflowEvent("WATCH_WORKFLOW", this.state.activeWorkflow.workflowId, {
-				type: "manual-rescan",
-				payload: {
-					requestedAt,
-				},
-			});
-
-			this.setState({
-				...this.state,
-				activeWorkflow: {
-					...this.state.activeWorkflow,
-					kind: "rescan",
-					trigger: "manual",
-					status: "queued",
-					queuedAt: requestedAt,
-					startedAt: null,
-				},
-			});
+		if (this.state.remainingRuns === 0) {
+			return {
+				accepted: false,
+				reason: "exhausted",
+				detail: this.requireWatchDetail(),
+			};
 		}
 
-		return this.requireWatchDetail();
+		if (this.state.activeWorkflow === null || this.state.activeWorkflow.status !== "waiting") {
+			return {
+				accepted: false,
+				reason: "already-running",
+				detail: this.requireWatchDetail(),
+			};
+		}
+
+		const requestedAt = new Date().toISOString();
+		await this.sendWorkflowEvent("WATCH_WORKFLOW", this.state.activeWorkflow.workflowId, {
+			type: "manual-rescan",
+			payload: {
+				requestedAt,
+			},
+		});
+
+		this.setState({
+			...this.state,
+			activeWorkflow: markWorkflowQueued(this.state.activeWorkflow, "rescan", "manual", requestedAt),
+		});
+
+		return {
+			accepted: true,
+			reason: "manual",
+			detail: this.requireWatchDetail(),
+		};
 	}
 
 	override async onWorkflowProgress(
@@ -124,21 +136,17 @@ export class WatchAgent extends Agent<Env, WatchState> {
 
 		const remainingRuns = Math.max(this.state.remainingRuns - 1, 0);
 		const shouldKeepWorkflow = remainingRuns > 0;
-		const nextTrigger: WorkflowTrigger = "automatic";
 
 		this.setState({
 			...this.state,
 			runs: [...this.state.runs, typedResult.run],
 			remainingRuns,
 			activeWorkflow: shouldKeepWorkflow
-				? {
-						...this.state.activeWorkflow,
-						kind: "rescan",
-						trigger: nextTrigger,
-						status: "queued",
-						queuedAt: typedResult.run.completedAt ?? new Date().toISOString(),
-						startedAt: null,
-					}
+				? markWorkflowWaiting(
+						this.state.activeWorkflow,
+						typedResult.run.completedAt ?? new Date().toISOString(),
+						this.state.config.cadenceMinutes,
+					)
 				: null,
 			lastError: typedResult.run.status === "failed" ? typedResult.run.narrativeSummary : null,
 		});
@@ -269,7 +277,7 @@ function parseWatchRun(value: unknown): WatchWorkflowResult["run"] | null {
 }
 
 function parseModelName(value: unknown): WatchWorkflowResult["run"]["modelName"] | null {
-	if (value === "@cf/zai-org/glm-4.5-air-fp8" || value === "@cf/meta/llama-3.3-70b-instruct-fp8-fast") {
+	if (value === "@cf/zai-org/glm-4.7-flash" || value === "@cf/meta/llama-3.3-70b-instruct-fp8-fast") {
 		return value;
 	}
 
@@ -291,6 +299,7 @@ function parseCapturedStep(value: unknown): WatchWorkflowResult["run"]["steps"][
 	}
 
 	const screenshotDataUrl = value.screenshotDataUrl;
+	const warnings = parseCaptureWarnings(value.warnings);
 	if (
 		typeof value.stepIndex !== "number" ||
 		typeof value.url !== "string" ||
@@ -300,6 +309,7 @@ function parseCapturedStep(value: unknown): WatchWorkflowResult["run"]["steps"][
 		!Array.isArray(value.primaryActions) ||
 		!value.primaryActions.every((action) => typeof action === "string") ||
 		(screenshotDataUrl !== null && typeof screenshotDataUrl !== "string") ||
+		warnings === null ||
 		typeof value.capturedAt !== "string"
 	) {
 		return null;
@@ -313,7 +323,34 @@ function parseCapturedStep(value: unknown): WatchWorkflowResult["run"]["steps"][
 		textDigest: value.textDigest,
 		primaryActions: value.primaryActions,
 		screenshotDataUrl,
+		warnings,
 		capturedAt: value.capturedAt,
+	};
+}
+
+function parseCaptureWarnings(value: unknown): WatchWorkflowResult["run"]["steps"][number]["warnings"] | null {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+
+	const parsed = value.map(parseCaptureWarning);
+	return parsed.every((warning) => warning !== null) ? parsed : null;
+}
+
+function parseCaptureWarning(
+	value: unknown,
+): WatchWorkflowResult["run"]["steps"][number]["warnings"][number] | null {
+	if (!isRecord(value)) {
+		return null;
+	}
+
+	if (value.code !== "screenshot-unavailable" || typeof value.message !== "string") {
+		return null;
+	}
+
+	return {
+		code: value.code,
+		message: value.message,
 	};
 }
 

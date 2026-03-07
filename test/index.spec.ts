@@ -16,7 +16,7 @@ describe("Watchpoint worker", () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					id: "standard",
-					modelName: "@cf/zai-org/glm-4.5-air-fp8",
+					modelName: "@cf/zai-org/glm-4.7-flash",
 					x402Price: "$0.07",
 				}),
 				expect.objectContaining({
@@ -55,7 +55,7 @@ describe("Watchpoint worker", () => {
 				"x-watchpoint-dev-payment": "watchpoint-local-paid",
 			},
 			body: JSON.stringify({
-				targetUrl: "https://watchpoint.local/stable",
+				targetUrl: "https://watchpoint.local/slow-stable",
 				tierId: "standard",
 			}),
 		});
@@ -77,7 +77,7 @@ describe("Watchpoint worker", () => {
 		expect(body.watch.activeWorkflow).not.toBeNull();
 		expect(body.x402).toEqual({
 			tierId: "standard",
-			modelName: "@cf/zai-org/glm-4.5-air-fp8",
+			modelName: "@cf/zai-org/glm-4.7-flash",
 			price: "$0.07",
 		});
 
@@ -85,6 +85,9 @@ describe("Watchpoint worker", () => {
 		expect(detail.watch.runCount).toBe(1);
 		expect(detail.watch.remainingRuns).toBe(2);
 		expect(detail.watch.activeWorkflow).not.toBeNull();
+		expect(detail.watch.status).toBe("waiting");
+		expect(detail.watch.activeWorkflow?.status).toBe("waiting");
+		expect(detail.watch.activeWorkflow?.nextScheduledAt).not.toBeNull();
 		expect(detail.runs[0]?.status).toBe("succeeded");
 		expect(detail.runs[0]?.steps.length).toBeGreaterThan(0);
 		expect(detail.runs[0]?.steps[0]?.primaryActions.length).toBeGreaterThan(0);
@@ -112,17 +115,125 @@ describe("Watchpoint worker", () => {
 		});
 		expect(rescanResponse.status).toBe(202);
 
-		const queued = await rescanResponse.json<{ watch: { id: string; activeWorkflow: { workflowId: string } | null } }>();
-		expect(queued.watch.activeWorkflow).not.toBeNull();
+		const queued = await rescanResponse.json<{
+			detail: { watch: { id: string; activeWorkflow: { workflowId: string; status: string } | null } };
+			rescan: { accepted: boolean; reason: string };
+		}>();
+		expect(queued.detail.watch.activeWorkflow).not.toBeNull();
+		expect(queued.rescan).toEqual({
+			accepted: true,
+			reason: "manual",
+		});
 
 		const detail = await waitForWatch(created.watch.id, (candidate) => candidate.runs.length === 2);
 		expect(detail.watch.remainingRuns).toBe(1);
+		expect(detail.watch.status).toBe("waiting");
 		expect(detail.runs).toHaveLength(2);
 		expect(detail.runs[1]?.kind).toBe("rescan");
 		expect(detail.runs[1]?.diffReport.hasChanges).toBe(true);
 		expect(detail.runs[1]?.diffReport.newIssues).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: "critical-error-surface" })]),
 		);
+	});
+
+	it("rejects duplicate and exhausted manual rescans deterministically", async () => {
+		await using workflow = await introspectWorkflow(env.WATCH_WORKFLOW);
+
+		const createResponse = await SELF.fetch("http://example.com/api/demo/watch", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				targetUrl: "https://watchpoint.local/stable",
+				tierId: "standard",
+			}),
+		});
+		expect(createResponse.status).toBe(201);
+		const created = await createResponse.json<{ watch: { id: string } }>();
+		await waitForWatch(created.watch.id, (detail) => detail.runs.length === 1);
+
+		const firstRescanPromise = SELF.fetch(`http://example.com/api/watch/${created.watch.id}/rescan`, {
+			method: "POST",
+		});
+		const duplicateRescanPromise = SELF.fetch(`http://example.com/api/watch/${created.watch.id}/rescan`, {
+			method: "POST",
+		});
+
+		const firstRescan = await firstRescanPromise;
+		expect(firstRescan.status).toBe(202);
+		const firstQueued = await firstRescan.json<{
+			rescan: { accepted: boolean; reason: string };
+		}>();
+		expect(firstQueued.rescan.accepted).toBe(true);
+
+		const duplicateRescan = await duplicateRescanPromise;
+		expect(duplicateRescan.status).toBe(409);
+		const duplicateBody = await duplicateRescan.json<{
+			rescan: { accepted: boolean; reason: string };
+			detail: WatchDetailResponse;
+		}>();
+		expect(duplicateBody.rescan).toEqual({
+			accepted: false,
+			reason: "already-running",
+		});
+		expect(duplicateBody.detail.watch.activeWorkflow?.status).toMatch(/queued|running/);
+
+		await waitForWatch(created.watch.id, (detail) => detail.runs.length === 2);
+
+		const secondRescan = await SELF.fetch(`http://example.com/api/watch/${created.watch.id}/rescan`, {
+			method: "POST",
+		});
+		expect(secondRescan.status).toBe(202);
+		await waitForWatch(created.watch.id, (detail) => detail.runs.length === 3);
+
+		const exhaustedRescan = await SELF.fetch(`http://example.com/api/watch/${created.watch.id}/rescan`, {
+			method: "POST",
+		});
+		expect(exhaustedRescan.status).toBe(409);
+		const exhaustedBody = await exhaustedRescan.json<{
+			rescan: { accepted: boolean; reason: string };
+			detail: WatchDetailResponse;
+		}>();
+		expect(exhaustedBody.rescan).toEqual({
+			accepted: false,
+			reason: "exhausted",
+		});
+		expect(exhaustedBody.detail.watch.remainingRuns).toBe(0);
+		expect(exhaustedBody.detail.watch.status).toBe("exhausted");
+	});
+
+	it("preserves run history after a failed baseline and a later successful recovery rescan", async () => {
+		await using workflow = await introspectWorkflow(env.WATCH_WORKFLOW);
+
+		const createResponse = await SELF.fetch("http://example.com/api/demo/watch", {
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({
+				targetUrl: "https://watchpoint.local/recovering",
+				tierId: "standard",
+			}),
+		});
+		expect(createResponse.status).toBe(201);
+		const created = await createResponse.json<{ watch: { id: string } }>();
+
+		const failedBaseline = await waitForWatch(created.watch.id, (detail) => detail.runs.length === 1);
+		expect(failedBaseline.runs[0]?.status).toBe("failed");
+		expect(failedBaseline.watch.lastError).toContain("navigation-timeout");
+		expect(failedBaseline.watch.status).toBe("waiting");
+
+		const rescanResponse = await SELF.fetch(`http://example.com/api/watch/${created.watch.id}/rescan`, {
+			method: "POST",
+		});
+		expect(rescanResponse.status).toBe(202);
+
+		const recovered = await waitForWatch(created.watch.id, (detail) => detail.runs.length === 2);
+		expect(recovered.runs[0]?.status).toBe("failed");
+		expect(recovered.runs[1]?.status).toBe("succeeded");
+		expect(recovered.runs[1]?.kind).toBe("rescan");
+		expect(recovered.watch.remainingRuns).toBe(1);
 	});
 });
 
@@ -132,13 +243,15 @@ type WatchDetailResponse = {
 		runCount: number;
 		remainingRuns: number;
 		status: string;
-		activeWorkflow: { workflowId: string; status: string } | null;
+		lastError: string | null;
+		activeWorkflow: { workflowId: string; status: string; nextScheduledAt: string | null } | null;
 	};
 	runs: Array<{
 		kind: string;
 		status: string;
 		steps: Array<{
 			primaryActions: string[];
+			warnings: Array<{ code: string }>;
 		}>;
 		diffReport: { hasChanges: boolean; newIssues: Array<{ id: string }> };
 	}>;

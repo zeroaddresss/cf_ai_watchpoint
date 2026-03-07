@@ -1,5 +1,5 @@
 import { getAgentByName } from "agents";
-import { parseCreateWatchInput, type WatchDetail } from "./domain";
+import { parseCreateWatchInput, type ManualRescanResult, type WatchDetail } from "./domain";
 
 export async function createWatch(env: Env, payload: unknown): Promise<WatchDetail | null> {
 	const input = parseCreateWatchInput(payload);
@@ -17,7 +17,7 @@ export async function getWatchDetail(env: Env, watchId: string): Promise<WatchDe
 	return stub.getWatchDetail();
 }
 
-export async function triggerRescan(env: Env, watchId: string): Promise<WatchDetail | null> {
+export async function triggerRescan(env: Env, watchId: string): Promise<ManualRescanResult | null> {
 	const stub = await getAgentByName(env.WATCH_AGENT, watchId);
 	return stub.performManualRescan();
 }

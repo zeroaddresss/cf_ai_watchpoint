@@ -4,6 +4,7 @@ const statusNode = document.getElementById("status");
 const timelineNode = document.getElementById("timeline");
 const tiersNode = document.getElementById("tiers");
 const curlSnippetNode = document.getElementById("curl-snippet");
+const watchSummaryNode = document.getElementById("watch-summary");
 const form = document.getElementById("watch-form");
 const rescanButton = document.getElementById("rescan-button");
 
@@ -70,13 +71,17 @@ rescanButton.addEventListener("click", async () => {
 	const response = await fetch(`/api/watch/${currentWatchId}/rescan`, {
 		method: "POST",
 	});
-	const detail = await response.json();
+	const payload = await response.json();
 	if (!response.ok) {
-		statusNode.textContent = detail.error ?? "Re-scan failed.";
+		const detail = payload.detail ?? null;
+		if (detail) {
+			renderDetail(detail);
+		}
+		statusNode.textContent = payload.error ?? "Re-scan failed.";
 		return;
 	}
 
-	renderDetail(detail);
+	renderDetail(payload.detail);
 	await refreshWatch(currentWatchId, currentRunCount + 1, "Manual re-scan complete.");
 });
 
@@ -135,13 +140,22 @@ tierSelect.addEventListener("change", renderCurlSnippet);
 targetUrlInput.addEventListener("input", renderCurlSnippet);
 
 function renderDetail(detail) {
+	renderWatchSummary(detail.watch);
+	rescanButton.disabled = detail.watch.remainingRuns === 0;
 	timelineNode.innerHTML = "";
 	for (const run of detail.runs.toReversed()) {
 		const card = document.createElement("article");
 		card.className = "card";
 		const issues = run.findings.map((finding) => `${finding.severity}: ${finding.title}`).join("<br />");
 		const steps = run.steps
-			.map((step) => `${step.stepIndex + 1}. ${step.title} (${step.primaryActions.join(", ") || "no primary actions"})`)
+			.map((step) => {
+				const screenshotState = step.screenshotDataUrl ? "screenshot captured" : "screenshot unavailable";
+				const warningText =
+					step.warnings.length > 0
+						? ` · warnings: ${step.warnings.map((warning) => warning.code).join(", ")}`
+						: "";
+				return `${step.stepIndex + 1}. ${step.title} (${step.primaryActions.join(", ") || "no primary actions"}) · ${screenshotState}${warningText}`;
+			})
 			.join("<br />");
 		card.innerHTML = `
 			<strong>${run.kind.toUpperCase()}</strong>
@@ -153,4 +167,45 @@ function renderDetail(detail) {
 		`;
 		timelineNode.append(card);
 	}
+}
+
+function renderWatchSummary(watch) {
+	watchSummaryNode.hidden = false;
+	const activeWorkflow = watch.activeWorkflow;
+	const trigger = activeWorkflow ? activeWorkflow.trigger : "none";
+	const nextScheduledAt =
+		activeWorkflow && activeWorkflow.nextScheduledAt
+			? new Date(activeWorkflow.nextScheduledAt).toLocaleString()
+			: "Not scheduled";
+	const lastRunAt = watch.lastRunAt ? new Date(watch.lastRunAt).toLocaleString() : "No runs yet";
+	const lastError = watch.lastError ?? "None";
+
+	watchSummaryNode.innerHTML = `
+		<dl>
+			<div>
+				<dt>Status</dt>
+				<dd>Status: ${watch.status}</dd>
+			</div>
+			<div>
+				<dt>Trigger</dt>
+				<dd>Trigger: ${trigger}</dd>
+			</div>
+			<div>
+				<dt>Remaining runs</dt>
+				<dd>${watch.remainingRuns}</dd>
+			</div>
+			<div>
+				<dt>Next scheduled</dt>
+				<dd>${nextScheduledAt}</dd>
+			</div>
+			<div>
+				<dt>Last run</dt>
+				<dd>${lastRunAt}</dd>
+			</div>
+			<div>
+				<dt>Last error</dt>
+				<dd>${lastError}</dd>
+			</div>
+		</dl>
+	`;
 }

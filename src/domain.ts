@@ -9,6 +9,9 @@ export type WatchPhase = "idle" | "monitoring";
 export type RunKind = "baseline" | "rescan";
 export type RunStatus = "queued" | "running" | "succeeded" | "failed";
 export type WorkflowTrigger = "initial" | "automatic" | "manual";
+export type WorkflowStatus = "queued" | "running" | "waiting";
+export type CaptureWarningCode = "screenshot-unavailable";
+export type ManualRescanReason = "manual" | "already-running" | "exhausted";
 
 export type WatchFinding = {
 	id: string;
@@ -25,6 +28,11 @@ export type DiffReport = {
 	stabilityNote: string;
 };
 
+export type CaptureWarning = {
+	code: CaptureWarningCode;
+	message: string;
+};
+
 export type CapturedStep = {
 	stepIndex: number;
 	url: string;
@@ -33,6 +41,7 @@ export type CapturedStep = {
 	textDigest: string;
 	primaryActions: string[];
 	screenshotDataUrl: string | null;
+	warnings: CaptureWarning[];
 	capturedAt: string;
 };
 
@@ -67,9 +76,10 @@ export type ActiveWorkflow = {
 	workflowName: "WATCH_WORKFLOW";
 	kind: RunKind;
 	trigger: WorkflowTrigger;
-	status: "queued" | "running";
+	status: WorkflowStatus;
 	queuedAt: string;
 	startedAt: string | null;
+	nextScheduledAt: string | null;
 };
 
 export type WatchWorkflowProgress = {
@@ -109,7 +119,7 @@ export type WatchState = IdleWatchState | MonitoringWatchState;
 export type WatchSnapshot = {
 	id: string;
 	targetUrl: string;
-	status: "queued" | "running" | "active" | "exhausted" | "failed";
+	status: WorkflowStatus | "active" | "exhausted" | "failed";
 	pricingTier: PricingTier;
 	remainingRuns: number;
 	createdAt: string;
@@ -122,6 +132,12 @@ export type WatchSnapshot = {
 export type WatchDetail = {
 	watch: WatchSnapshot;
 	runs: WatchRun[];
+};
+
+export type ManualRescanResult = {
+	accepted: boolean;
+	reason: ManualRescanReason;
+	detail: WatchDetail;
 };
 
 export type CreateWatchInput = {
@@ -196,6 +212,7 @@ export function createActiveWorkflow(
 		status: "queued",
 		queuedAt,
 		startedAt: null,
+		nextScheduledAt: null,
 	};
 }
 
@@ -207,6 +224,36 @@ export function markWorkflowRunning(
 		...workflow,
 		status: progress.status,
 		startedAt: progress.startedAt,
+		nextScheduledAt: null,
+	};
+}
+
+export function markWorkflowQueued(
+	workflow: ActiveWorkflow,
+	kind: RunKind,
+	trigger: WorkflowTrigger,
+	queuedAt: string,
+): ActiveWorkflow {
+	return {
+		...workflow,
+		kind,
+		trigger,
+		status: "queued",
+		queuedAt,
+		startedAt: null,
+		nextScheduledAt: null,
+	};
+}
+
+export function markWorkflowWaiting(workflow: ActiveWorkflow, completedAt: string, cadenceMinutes: number): ActiveWorkflow {
+	return {
+		...workflow,
+		kind: "rescan",
+		trigger: "automatic",
+		status: "waiting",
+		queuedAt: completedAt,
+		startedAt: null,
+		nextScheduledAt: addMinutesIso(completedAt, cadenceMinutes),
 	};
 }
 
@@ -323,4 +370,13 @@ function severityScore(severity: FindingSeverity): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
+}
+
+function addMinutesIso(timestamp: string, minutes: number): string {
+	const parsedTimestamp = Date.parse(timestamp);
+	if (Number.isNaN(parsedTimestamp)) {
+		return timestamp;
+	}
+
+	return new Date(parsedTimestamp + minutes * 60_000).toISOString();
 }

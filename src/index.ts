@@ -82,12 +82,35 @@ app.get("/api/watch/:watchId", async (context) => {
 });
 
 app.post("/api/watch/:watchId/rescan", async (context) => {
-	const detail = await triggerRescan(context.env, context.req.param("watchId"));
-	if (detail === null) {
+	const result = await triggerRescan(context.env, context.req.param("watchId"));
+	if (result === null) {
 		return context.json({ error: "Watch not found." }, 404);
 	}
 
-	return context.json(detail, 202);
+	if (!result.accepted) {
+		return context.json(
+			{
+				error: result.reason === "exhausted" ? "Watch pack exhausted." : "Re-scan already queued or running.",
+				detail: result.detail,
+				rescan: {
+					accepted: result.accepted,
+					reason: result.reason,
+				},
+			},
+			409,
+		);
+	}
+
+	return context.json(
+		{
+			detail: result.detail,
+			rescan: {
+				accepted: result.accepted,
+				reason: result.reason,
+			},
+		},
+		202,
+	);
 });
 
 export default {

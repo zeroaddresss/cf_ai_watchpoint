@@ -172,8 +172,36 @@
 				font-weight: 600;
 			}
 
+			.summary {
+				margin: 16px 0 20px;
+			}
+
+			.summary dl {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 10px 16px;
+				margin: 0;
+			}
+
+			.summary dt {
+				font-size: 0.78rem;
+				font-weight: 700;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+			}
+
+			.summary dd {
+				margin: 4px 0 0;
+				font-weight: 600;
+			}
+
 			@media (max-width: 860px) {
 				.grid {
+					grid-template-columns: 1fr;
+				}
+
+				.summary dl {
 					grid-template-columns: 1fr;
 				}
 			}
@@ -209,6 +237,7 @@
 						</div>
 					</form>
 					<p id="status"></p>
+					<div class="card summary" id="watch-summary" hidden></div>
 					<div class="cards" id="timeline"></div>
 				</div>
 

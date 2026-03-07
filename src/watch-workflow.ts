@@ -1,7 +1,7 @@
 import { AgentWorkflow, type AgentWorkflowStep } from "agents/workflows";
 import type { WorkflowEvent } from "cloudflare:workers";
 import { analyzeCapturedSession } from "./analysis";
-import { captureSession } from "./capture";
+import { captureSession, getFixtureCaptureFailure, CaptureSessionError } from "./capture";
 import {
 	createRunId,
 	emptyDiffReport,
@@ -78,6 +78,14 @@ export class WatchWorkflow extends AgentWorkflow<WatchAgent, WatchWorkflowParams
 		}
 
 		try {
+			const simulatedFailure = getFixtureCaptureFailure({
+				targetUrl,
+				runIndex,
+			});
+			if (simulatedFailure !== null) {
+				return createFailedRun(kind, pricingTier.modelName, startedAt, targetUrl, simulatedFailure);
+			}
+
 			const session = await captureSession(this.env, {
 				targetUrl,
 				runIndex,
@@ -105,28 +113,44 @@ export class WatchWorkflow extends AgentWorkflow<WatchAgent, WatchWorkflowParams
 				diffReport: analysis.diffReport,
 			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Unknown scan failure";
-			const completedAt = new Date().toISOString();
-			return {
-				id: createRunId(kind),
-				kind,
-				status: "failed",
-				startedAt,
-				completedAt,
-				modelName: pricingTier.modelName,
-				pageTitle: "Scan failed",
-				canonicalUrl: targetUrl,
-				contentDigest: "",
-				steps: [],
-				narrativeSummary: message,
-				findings: [],
-				diffReport: {
-					...emptyDiffReport(),
-					stabilityNote: "Scan failed before diffing could complete.",
-				},
-			};
+			return createFailedRun(kind, pricingTier.modelName, startedAt, targetUrl, error);
 		}
 	}
+}
+
+function createFailedRun(
+	kind: RunKind,
+	modelName: WatchRun["modelName"],
+	startedAt: string,
+	targetUrl: string,
+	error: unknown,
+): WatchRun {
+	const completedAt = new Date().toISOString();
+	const narrativeSummary =
+		error instanceof CaptureSessionError
+			? `${error.kind}: ${error.message}`
+			: error instanceof Error
+				? error.message
+				: "Unknown scan failure";
+
+	return {
+		id: createRunId(kind),
+		kind,
+		status: "failed",
+		startedAt,
+		completedAt,
+		modelName,
+		pageTitle: "Scan failed",
+		canonicalUrl: targetUrl,
+		contentDigest: "",
+		steps: [],
+		narrativeSummary,
+		findings: [],
+		diffReport: {
+			...emptyDiffReport(),
+			stabilityNote: "Scan failed before diffing could complete.",
+		},
+	};
 }
 
 async function waitForNextTrigger(step: AgentWorkflowStep, cadenceMinutes: number): Promise<WorkflowTrigger> {

@@ -2,7 +2,7 @@ export const primaryModelDisplayName = "GLM 4.7 Flash";
 export const primaryModelDocsUrl = "https://developers.cloudflare.com/workers-ai/models/glm-4.7-flash/";
 
 export type ModelName =
-	| "@cf/zai-org/glm-4.5-air-fp8"
+	| "@cf/zai-org/glm-4.7-flash"
 	| "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 export type PricingTierId = "standard" | "premium";
@@ -25,7 +25,7 @@ const pricingTiers = {
 		x402Price: "$0.07",
 		includedRuns: 3,
 		cadenceMinutes: 60,
-		modelName: "@cf/zai-org/glm-4.5-air-fp8",
+		modelName: "@cf/zai-org/glm-4.7-flash",
 		capacitySummary: "Fast, lower-cost monitoring for stable sites.",
 		referenceDocsUrl: primaryModelDocsUrl,
 	},
