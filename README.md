@@ -24,6 +24,12 @@ Typical flow:
 3. Later it runs the same flow again.
 4. If something changed, it tells you what changed, what looks broken, and what needs attention.
 
+## Demo
+
+<video src="./demo.mp4" controls muted playsinline width="100%"></video>
+
+If your Markdown viewer does not render the embedded video, open [`demo.mp4`](./demo.mp4) directly.
+
 ## Why it matters
 
 What problem it solves:
@@ -184,6 +190,27 @@ Current tools:
   - `create_watch_standard`
   - `create_watch_premium`
 
+## For agents
+
+If you are an agent and want to integrate with Watchpoint as a capability instead of using the web UI, use one of these two surfaces:
+
+- `MCP` at `/mcp`
+  - best option if you want a tool-style integration
+  - free tools: `list_pricing`, `get_watch_status`
+  - paid tools: `create_watch_standard`, `create_watch_premium`
+- `HTTP API`
+  - use `GET /api/pricing` to discover tiers
+  - use `POST /api/watch/tiers/:tierId` to create a paid watch
+  - use `GET /api/watch/:watchId` to read the current watch state
+  - use `POST /api/watch/:watchId/rescan` to trigger a manual rescan
+
+Integration guidance:
+- use a public HTTPS target URL that Cloudflare Browser Rendering can actually reach
+- do not use `watchpoint.local` outside local development; that fixture is only for deterministic local demo and test flows
+- after creating a watch, poll watch status until the first run completes
+- expect the watch lifecycle to move through `queued`, `running`, `waiting`, `failed`, or `exhausted`
+- if you want the quickest agent-native integration, prefer MCP over raw HTTP
+
 ## Model Tiers
 
 Workers AI is the only inference backend in v1.
@@ -220,6 +247,9 @@ Fastest API proof:
 1. `GET /api/pricing`
 2. `POST /api/watch/tiers/standard` without payment to observe `402`
 3. Retry with the dev bypass header locally, or real payment in a deployed environment
+
+<details>
+<summary><strong>Local development, testing, and deployment notes</strong></summary>
 
 ## Local Development
 
@@ -335,24 +365,7 @@ Suggested post-deploy smoke order:
 3. exercise one paid HTTP or MCP create-watch path
 4. fetch resulting watch status
 
-## Testing Strategy
-
-Watchpoint was implemented test-first with Cloudflare’s Agent testing guidance as the main reference.
-
-Current validation layers:
-- Worker/Agent integration tests with `vitest` and `@cloudflare/vitest-pool-workers`
-- capture contract tests for deterministic browser fixture behavior
-- local Playwright dashboard E2E, manual opt-in
-- remote MCP smoke validation, manual opt-in
-
-The most important deterministic coverage currently verifies:
-- pricing and model metadata
-- official `402` challenge behavior
-- paid watch creation
-- workflow-driven baseline and rescan behavior
-- watch waiting/exhaustion semantics
-- browser capture fallback and warning behavior
-- regression detection between runs
+</details>
 
 ## Cloudflare References
 
