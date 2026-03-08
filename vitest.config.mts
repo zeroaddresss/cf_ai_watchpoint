@@ -2,6 +2,9 @@ import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
 
 export default defineWorkersConfig({
 	test: {
+		fileParallelism: false,
+		maxWorkers: 1,
+		minWorkers: 1,
 		exclude: ["e2e/**", "playwright.config.ts"],
 		poolOptions: {
 			workers: {
