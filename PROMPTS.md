@@ -139,3 +139,44 @@ everything seems to work like a charm, we've made a lot of changes and architect
 - document safe default checks vs heavy manual validation
 - explain who pays for inference and why our service is worth buying
 - keep the language simple and practical
+
+*********************************************************************************
+
+the current frontend is too barebone. html/css/js was fine for the first prototype, but now it makes the demo look weaker than the actual backend. i want to migrate the UI to React while keeping the backend untouched. same Worker, same routes, same product behavior. do not redesign the app architecture on the server side: this is a frontend refactor, not a product rewrite. requirements:
+- keep the existing Worker endpoints exactly as they are
+- move from static html/js/css to React + TypeScript
+- split the UI into components and hooks with clear responsibilities
+- keep state management simple and local, no redux/zustand
+- preserve the current flow:
+  - fetch pricing
+  - create a demo watch
+  - poll watch detail
+  - trigger manual rescan
+  - show run timeline and diff
+- make the UI strongly inspired by Cloudflare's design language, but do not copy their website
+- use shadcn/ui where it helps with quality and speed (shadcn/ui skill may come in handy)
+- use frontend-design skill to avoid generic ai-slop-looking UI
+- use react best practices: typed props, small components, reusable hooks, no messy imperative DOM logic
+
+testing/validation rules:
+- work TDD-first where possible
+- keep UI tests separate from Worker tests
+- do not mix Playwright into the default test flow
+- my machine is sensitive to memory pressure, so avoid starting heavy local servers unless really necessary
+
+let's plan the migration carefully, discuss and define together the target component structure and the validation strategy, then implement it step by step
+
+*********************************************************************************
+
+the architecture diagram is not good enough. i do not want an embedded excalidraw or a generic flowchart-looking artifact. i want a custom diagram built directly in React, fully integrated in the /demo page, with a premium feel and coherent with the rest of the product. here's the direction:
+- do not use mermaid or react-flow for the final rendering
+- use cloudflare-branded svg marks where appropriate for Workers AI, Browser Rendering, Agents / Durable Objects, Workflows
+- nodes must be clickable and open a clean popup with concise explanations
+- explanations must stay simple:
+  - what it is for
+  - what it does
+  - how it works in Watchpoint
+- avoid dense technical text and avoid over-explaining
+- connectors must be elegant and intentional, not random svg lines
+
+use frontend-design skill and react best practices for this work. before implementing, reason carefully about the component model and the svg/layout strategy
