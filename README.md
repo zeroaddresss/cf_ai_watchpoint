@@ -14,13 +14,6 @@ Watchpoint tells you whether the user experience is still working.
 
 It visits a site like a lightweight agent, establishes a baseline, remembers what it saw, and checks the same flow again later. If something breaks, disappears, or changes in a meaningful way, it returns a report that explains what changed and why it matters.
 
-In simple terms, Watchpoint gives you:
-- a persistent watch for a website
-- baseline and rescan runs over time
-- regression detection on visible user flows
-- short AI summaries for fast triage
-- a product you can use from a UI, an HTTP API, or as an MCP tool
-
 This makes it useful for two kinds of users:
 - a human developer who wants to catch visible breakage before users do
 - another agent that wants to buy website monitoring as a ready-made capability instead of rebuilding browser automation, memory, and diffing from scratch
@@ -33,23 +26,11 @@ Typical flow:
 
 ## Why it matters
 
-Watchpoint is valuable because it packages a full monitoring loop into one service:
-- browser-based inspection instead of simple uptime checks
-- persistent memory instead of one-off scans
-- regression detection instead of raw screenshots or HTML dumps
-- machine-consumable access through HTTP and MCP
-
 What problem it solves:
 - a site can be technically online and still be broken for users
 - important flows can disappear between deploys without triggering classic monitoring
 - raw browser automation output is noisy and expensive to turn into something useful
 - other agents often need this capability, but should not have to build it from zero every time
-
-Why it is worth paying for:
-- it saves time by turning browser evidence into an actionable report
-- it remembers previous runs, so change detection is built in
-- it exposes the capability as a product, not just an internal script
-- it is easy to plug into other agent workflows
 
 ## Architecture 🏗️
 
@@ -64,8 +45,8 @@ Current Cloudflare building blocks:
   - developer-facing run summaries
 - `x402`
   - paid HTTP route and paid MCP tool surface
-- `Pages/Assets`
-  - free demo dashboard
+- `Workers Assets`
+  - SPA assets served through the Worker `ASSETS` binding
 
 ### Infrastructure diagram
 
@@ -73,7 +54,7 @@ Current Cloudflare building blocks:
 flowchart LR
     User[Human user]
     AgentClient[External agent or MCP client]
-    BrowserUI[Dashboard UI / Pages assets]
+    BrowserUI[Dashboard UI / Workers assets]
     Worker[Watchpoint Worker\nHono routes + MCP handler]
     WatchAgent[WatchAgent\nAgents SDK on Durable Objects]
     Workflow[WatchWorkflow\nCloudflare Workflows]
@@ -143,15 +124,21 @@ Current runtime behavior:
 4. Each run stores captured browser steps, findings, and a diff against the previous run.
 5. The watch eventually exhausts its included run budget.
 
+Important scope note:
+- the frontend is intentionally a compact reviewer surface and visual presentation layer
+- it is useful for understanding the product flow quickly, but it does not represent the full operational complexity of the underlying infrastructure
+- the real system design lives in the Agent, Workflow, capture, AI, payment, and persistent-state paths described above and implemented in the Worker codebase
+
 ## Product Surfaces ⚡
 
 ### Free demo dashboard 👀
 
-Available at `/`.
+Available at `/demo`.
+The root path `/` normalizes to `/demo` in the SPA router.
 
 Deployment status:
-- live deployed dashboard: `TBD`
-- local dashboard for development: `http://localhost:8787/`
+- live deployed dashboard: `https://cf-ai-watchpoint.zeroaddress.workers.dev/demo`
+- local dashboard for development: `http://localhost:8787/demo`
 
 Purpose:
 - show the watch lifecycle quickly for a reviewer
@@ -222,8 +209,8 @@ If `WATCHPOINT_AI_GATEWAY_ID` is set, Workers AI requests are tagged and routed 
 
 Fastest path to understand the project:
 1. Open the dashboard.
-   Current deployed URL: `TBD`
-   Local dev URL: `http://localhost:8787/`
+   Current deployed URL: `https://cf-ai-watchpoint.zeroaddress.workers.dev/demo`
+   Local dev URL: `http://localhost:8787/demo`
 2. Create a demo watch for `https://watchpoint.local/regression`.
 3. Wait for the baseline to complete.
 4. Trigger a manual rescan.
@@ -242,9 +229,6 @@ Fastest API proof:
 - npm
 - Wrangler authenticated for deploys and real remote resources
 
-Why Node 22:
-- `wrangler dev` with remote AI/browser bindings was unreliable on newer non-LTS Node versions in local development
-
 ### Install
 
 ```bash
@@ -259,30 +243,8 @@ These are the low-risk commands to use during normal development:
 ```bash
 npm run check
 npm test
+npm run build:ui
 ```
-
-Notes:
-- `npm test` runs the Vitest Worker/Agent integration suite only
-- it does not start the Playwright E2E harness
-
-### Manual opt-in heavy validation
-
-These commands are intentionally not part of the default flow:
-
-```bash
-npm run test:e2e
-npm run test:mcp:remote
-```
-
-Safety rules:
-- run heavy commands one at a time
-- do not run Vitest and Playwright concurrently
-- ensure no old `wrangler`, `playwright`, or `workerd` processes are still running before starting another heavy command
-- avoid `test:e2e:headed` unless interactive debugging is necessary
-
-Why this matters:
-- `npm run test:e2e` starts a local Wrangler server plus a browser session
-- that is the heaviest local validation path in this repository
 
 ### Local run
 
@@ -290,8 +252,10 @@ Why this matters:
 npm run dev
 ```
 
+This command builds the React dashboard first and then starts Wrangler.
+
 Useful local URLs:
-- dashboard: `http://localhost:8787/`
+- dashboard: `http://localhost:8787/demo`
 - health: `http://localhost:8787/api/health`
 - pricing: `http://localhost:8787/api/pricing`
 - MCP: `http://localhost:8787/mcp`
