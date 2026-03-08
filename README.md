@@ -10,27 +10,25 @@
 `Watchpoint` is a Cloudflare-native AI web monitoring agent for developers and other agents.
 
 Most website monitoring tools tell you whether a page is up.
-Watchpoint tells you whether the user experience is still working.
+**Watchpoint tells you whether the user experience is still working.**
 
-It visits a site like a lightweight agent, establishes a baseline, remembers what it saw, and checks the same flow again later. If something breaks, disappears, or changes in a meaningful way, it returns a report that explains what changed and why it matters.
+It visits a site like a lightweight agent, establishes a baseline, **remembers what it saw**, and checks the same flow again later. **If something breaks, disappears, or changes in a meaningful way, it returns a report that explains what changed and why it matters.**
 
 This makes it useful for two kinds of users:
 - a human developer who wants to catch visible breakage before users do
 - another agent that wants to buy website monitoring as a ready-made capability instead of rebuilding browser automation, memory, and diffing from scratch
 
-Typical flow:
+_Typical flow_:
 1. Create a watch for a public URL.
 2. Watchpoint runs a baseline browser session and stores the result.
 3. Later it runs the same flow again.
-4. If something changed, it tells you what changed, what looks broken, and what needs attention.
+4. **If something changed, it tells you what changed, what looks broken, and what needs attention.**
 
 ## 🎬 Demo
 
 [![Watchpoint demo preview](./demo-poster.png)](./demo.mp4)
 
 Open [`demo.mp4`](./demo.mp4) directly if your Markdown viewer does not support rich media previews.
-
-This demo shows the web product flow only. It does not cover the paid `x402` path.
 
 ## 🤔 Why it matters
 
@@ -41,20 +39,6 @@ What problem it solves:
 - other agents often need this capability, but should not have to build it from zero every time
 
 ## 🏗️ Architecture
-
-Current Cloudflare building blocks:
-- `Agents SDK`
-  - one `WatchAgent` per watch, persisted on Durable Objects
-- `Workflows`
-  - baseline run execution, waiting between rescans, retries, lifecycle progression
-- `Browser Rendering`
-  - runtime page inspection with deterministic step capture
-- `Workers AI`
-  - developer-facing run summaries
-- `x402`
-  - paid HTTP route and paid MCP tool surface
-- `Workers Assets`
-  - SPA assets served through the Worker `ASSETS` binding
 
 ### 🌐 Infrastructure diagram
 
@@ -148,6 +132,9 @@ Fastest API proof:
 
 ## ⚡ Product Surfaces
 
+<details>
+<summary><strong>Open product surfaces</strong></summary>
+
 ### 👀 Free demo dashboard
 
 Available at `/demo`.
@@ -186,6 +173,8 @@ Current tools:
   - `create_watch_standard`
   - `create_watch_premium`
 
+</details>
+
 ## 🤖 For agents
 
 If you are an agent and want to integrate with Watchpoint as a capability instead of using the web UI, use one of these two surfaces:
@@ -208,6 +197,9 @@ Integration guidance:
 
 ## 🧠 Model Tiers
 
+<details>
+<summary><strong>Open model tiers</strong></summary>
+
 Workers AI is the only inference backend in v1.
 
 Pricing tiers currently exposed by the app:
@@ -226,6 +218,8 @@ Primary Cloudflare reference:
 - <https://developers.cloudflare.com/workers-ai/models/glm-4.7-flash/>
 
 If `WATCHPOINT_AI_GATEWAY_ID` is set, Workers AI requests are tagged and routed with AI Gateway metadata enabled.
+
+</details>
 
 <details>
 <summary><strong>🛠️ Local development, testing, and deployment notes</strong></summary>
