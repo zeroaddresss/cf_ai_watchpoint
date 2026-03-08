@@ -24,13 +24,15 @@ Typical flow:
 3. Later it runs the same flow again.
 4. If something changed, it tells you what changed, what looks broken, and what needs attention.
 
-## Demo
+## 🎬 Demo
 
-<video src="./demo.mp4" controls muted playsinline width="100%"></video>
+[![Watchpoint demo preview](./demo-poster.png)](./demo.mp4)
 
-If your Markdown viewer does not render the embedded video, open [`demo.mp4`](./demo.mp4) directly.
+Open [`demo.mp4`](./demo.mp4) directly if your Markdown viewer does not support rich media previews.
 
-## Why it matters
+This demo shows the web product flow only. It does not cover the paid `x402` path.
+
+## 🤔 Why it matters
 
 What problem it solves:
 - a site can be technically online and still be broken for users
@@ -38,7 +40,7 @@ What problem it solves:
 - raw browser automation output is noisy and expensive to turn into something useful
 - other agents often need this capability, but should not have to build it from zero every time
 
-## Architecture 🏗️
+## 🏗️ Architecture
 
 Current Cloudflare building blocks:
 - `Agents SDK`
@@ -54,19 +56,19 @@ Current Cloudflare building blocks:
 - `Workers Assets`
   - SPA assets served through the Worker `ASSETS` binding
 
-### Infrastructure diagram
+### 🌐 Infrastructure diagram
 
 ```mermaid
 flowchart LR
-    User[Human user]
-    AgentClient[External agent or MCP client]
-    BrowserUI[Dashboard UI / Workers assets]
-    Worker[Watchpoint Worker\nHono routes + MCP handler]
-    WatchAgent[WatchAgent\nAgents SDK on Durable Objects]
-    Workflow[WatchWorkflow\nCloudflare Workflows]
+    User["Human user"]
+    AgentClient["External agent or MCP client"]
+    BrowserUI["Dashboard UI / Workers assets"]
+    Worker["Watchpoint Worker<br>Hono routes + MCP handler"]
+    WatchAgent["WatchAgent<br>Agents SDK on Durable Objects"]
+    Workflow["WatchWorkflow<br>Cloudflare Workflows"]
     BrowserRendering[Cloudflare Browser Rendering]
     WorkersAI[Workers AI]
-    AIGateway[AI Gateway\noptional]
+    AIGateway["AI Gateway<br>optional"]
     TargetSite[Public target website]
     X402HTTP[x402 payment middleware]
     X402MCP[x402 MCP wrapper]
@@ -91,21 +93,21 @@ flowchart LR
     WatchAgent --> Worker
 ```
 
-### Agentic component architecture
+### 🧠 Agentic component architecture
 
 ```mermaid
 flowchart TD
-    Create[Create watch\nUI / HTTP / MCP] --> AgentCreate[WatchAgent.createWatch]
-    AgentCreate --> StateInit[Persist watch config\nruns=[] remainingRuns=N]
+    Create["Create watch<br>UI / HTTP / MCP"] --> AgentCreate[WatchAgent.createWatch]
+    AgentCreate --> StateInit["Persist watch config<br>runs=empty, remainingRuns=N"]
     AgentCreate --> WorkflowStart[runWorkflow WATCH_WORKFLOW]
 
     WorkflowStart --> Progress[reportProgress running]
     Progress --> AgentProgress[WatchAgent.onWorkflowProgress]
 
     WorkflowStart --> Capture[captureSession]
-    Capture --> Step1[Step 1: landing page]
-    Step1 --> FollowUp{same-origin\nfollow-up link?}
-    FollowUp -->|yes| Step2[Step 2: follow-up page]
+    Capture --> Step1["Step 1: landing page"]
+    Step1 --> FollowUp{"same-origin<br>follow-up link?"}
+    FollowUp -->|yes| Step2["Step 2: follow-up page"]
     FollowUp -->|no| Analysis[analyzeCapturedSession]
     Step2 --> Analysis
 
@@ -115,52 +117,46 @@ flowchart TD
     Summary --> Complete
 
     Complete --> AgentComplete[WatchAgent.onWorkflowComplete]
-    AgentComplete --> Waiting[waiting state\nnextScheduledAt set]
+    AgentComplete --> Waiting["waiting state<br>nextScheduledAt set"]
 
-    Manual[Manual rescan request] --> ManualGate{waiting and\nremainingRuns > 0?}
+    Manual["Manual rescan request"] --> ManualGate{"waiting and<br>remainingRuns > 0?"}
     ManualGate -->|yes| QueueManual[sendWorkflowEvent manual-rescan]
     QueueManual --> WorkflowStart
-    ManualGate -->|no| Reject[409 already-running or exhausted]
+    ManualGate -->|no| Reject["409 already-running or exhausted"]
 ```
-
-Current runtime behavior:
-1. A watch is created from the demo UI, the paid HTTP API, or a paid MCP tool.
-2. A workflow runs the baseline scan.
-3. The watch enters a `waiting` state until the next scheduled automatic rescan or a manual rescan request.
-4. Each run stores captured browser steps, findings, and a diff against the previous run.
-5. The watch eventually exhausts its included run budget.
 
 Important scope note:
 - the frontend is intentionally a compact reviewer surface and visual presentation layer
 - it is useful for understanding the product flow quickly, but it does not represent the full operational complexity of the underlying infrastructure
 - the real system design lives in the Agent, Workflow, capture, AI, payment, and persistent-state paths described above and implemented in the Worker codebase
 
-## Product Surfaces ⚡
+## 🔎 Reviewer Path
 
-### Free demo dashboard 👀
+Fastest path to understand the project:
+1. Open the dashboard.
+   Current deployed URL: `https://cf-ai-watchpoint.zeroaddress.workers.dev/demo`
+   Local dev URL: `http://localhost:8787/demo`
+2. Create a demo watch for `https://watchpoint.local/regression`.
+3. Wait for the baseline to complete.
+4. Trigger a manual rescan.
+5. Inspect the diff in the timeline and the workflow summary panel.
+
+Fastest API proof:
+1. `GET /api/pricing`
+2. `POST /api/watch/tiers/standard` without payment to observe `402`
+3. Retry with the dev bypass header locally, or real payment in a deployed environment
+
+## ⚡ Product Surfaces
+
+### 👀 Free demo dashboard
 
 Available at `/demo`.
-The root path `/` normalizes to `/demo` in the SPA router.
 
 Deployment status:
 - live deployed dashboard: `https://cf-ai-watchpoint.zeroaddress.workers.dev/demo`
 - local dashboard for development: `http://localhost:8787/demo`
 
-Purpose:
-- show the watch lifecycle quickly for a reviewer
-- create a demo watch against deterministic fixture targets
-- inspect run timeline, workflow state, and diff output
-
-Recommended demo target:
-- `https://watchpoint.local/regression`
-
-Important:
-- `watchpoint.local` is not a deployed public service
-- it is a deterministic local fixture target used for demo and test flows
-
-That fixture is intentionally healthy on the first run and broken on the next, so the regression flow is visible immediately.
-
-### Paid HTTP API 💸
+### 💸 Paid HTTP API
 
 Current routes:
 - `GET /api/health`
@@ -178,7 +174,7 @@ Important semantics:
   - returns `202` when a manual rescan is accepted
   - returns `409` when the watch is already queued/running or when the pack is exhausted
 
-### Paid MCP surface 🤖
+### 🤖 Paid MCP surface
 
 Mounted at `/mcp`.
 
@@ -190,7 +186,7 @@ Current tools:
   - `create_watch_standard`
   - `create_watch_premium`
 
-## For agents
+## 🤖 For agents
 
 If you are an agent and want to integrate with Watchpoint as a capability instead of using the web UI, use one of these two surfaces:
 
@@ -206,12 +202,11 @@ If you are an agent and want to integrate with Watchpoint as a capability instea
 
 Integration guidance:
 - use a public HTTPS target URL that Cloudflare Browser Rendering can actually reach
-- do not use `watchpoint.local` outside local development; that fixture is only for deterministic local demo and test flows
 - after creating a watch, poll watch status until the first run completes
 - expect the watch lifecycle to move through `queued`, `running`, `waiting`, `failed`, or `exhausted`
 - if you want the quickest agent-native integration, prefer MCP over raw HTTP
 
-## Model Tiers
+## 🧠 Model Tiers
 
 Workers AI is the only inference backend in v1.
 
@@ -232,26 +227,10 @@ Primary Cloudflare reference:
 
 If `WATCHPOINT_AI_GATEWAY_ID` is set, Workers AI requests are tagged and routed with AI Gateway metadata enabled.
 
-## Reviewer Path
-
-Fastest path to understand the project:
-1. Open the dashboard.
-   Current deployed URL: `https://cf-ai-watchpoint.zeroaddress.workers.dev/demo`
-   Local dev URL: `http://localhost:8787/demo`
-2. Create a demo watch for `https://watchpoint.local/regression`.
-3. Wait for the baseline to complete.
-4. Trigger a manual rescan.
-5. Inspect the diff in the timeline and the workflow summary panel.
-
-Fastest API proof:
-1. `GET /api/pricing`
-2. `POST /api/watch/tiers/standard` without payment to observe `402`
-3. Retry with the dev bypass header locally, or real payment in a deployed environment
-
 <details>
-<summary><strong>Local development, testing, and deployment notes</strong></summary>
+<summary><strong>🛠️ Local development, testing, and deployment notes</strong></summary>
 
-## Local Development
+## 🛠️ Local Development
 
 ### Prerequisites
 
