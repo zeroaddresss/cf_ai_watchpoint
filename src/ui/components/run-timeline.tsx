@@ -1,8 +1,8 @@
 import { ExternalLink, TriangleAlert } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/ui/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/components/ui/card";
+import { ScrollArea } from "@/ui/components/ui/scroll-area";
+import { Separator } from "@/ui/components/ui/separator";
 import { formatDateTime, uppercaseRunKind } from "../lib/formatters";
 import type { WatchRun } from "../lib/contracts";
 

@@ -1,8 +1,8 @@
 import { type MouseEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { Boxes, Braces, ScanSearch, Workflow } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/ui/components/ui/button";
+import { Card, CardContent } from "@/ui/components/ui/card";
+import { Skeleton } from "@/ui/components/ui/skeleton";
 import { ApiPanel } from "./components/api-panel";
 import { CreateWatchForm } from "./components/create-watch-form";
 import { InfrastructureDiagram } from "./components/infrastructure-diagram";

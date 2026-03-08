@@ -1,7 +1,7 @@
 import { ArrowUpRight, Clock3, Cpu, Wallet } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/ui/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/components/ui/card";
+import { Separator } from "@/ui/components/ui/separator";
 import type { PricingResponse } from "../lib/contracts";
 
 export function PricingGrid({ pricing }: { pricing: PricingResponse }) {

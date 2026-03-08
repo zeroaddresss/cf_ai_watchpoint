@@ -1,6 +1,6 @@
 import { ShieldCheck, Waves, WalletCards } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/ui/components/ui/badge";
+import { Card, CardContent } from "@/ui/components/ui/card";
 
 const valuePoints = [
 	{

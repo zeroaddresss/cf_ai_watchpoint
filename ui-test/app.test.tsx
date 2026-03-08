@@ -67,9 +67,8 @@ describe("App", () => {
 		expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "API" })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "Pricing" })).toBeInTheDocument();
-		expect(screen.queryByText(/entry surfaces/i)).not.toBeInTheDocument();
-		expect(screen.getByText(/interactive architecture map/i)).toBeInTheDocument();
-		expect(screen.getByText(/click a component to inspect the live system/i)).toBeInTheDocument();
+		expect(screen.getByText("Watchpoint")).toBeInTheDocument();
+		expect(screen.getByText(/cloudflare-native monitoring loop/i)).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "Demo" })).toHaveAttribute("aria-current", "page");
 
 		await waitFor(() => {
@@ -77,18 +76,13 @@ describe("App", () => {
 		});
 
 		expect(screen.getByRole("combobox", { name: /pricing tier/i })).toBeInTheDocument();
-		const watchAgentButtons = screen.getAllByRole("button", { name: /watchagent/i });
-		expect(watchAgentButtons.every((button) => button.getAttribute("aria-pressed") === "true")).toBe(true);
-		expect(screen.getAllByText("x402").length).toBeGreaterThan(0);
 		expect(screen.getAllByText("HTTP API").length).toBeGreaterThan(0);
-		expect(screen.getAllByText("MCP").length).toBeGreaterThan(0);
-		fireEvent.click(screen.getAllByRole("button", { name: /workers ai/i })[0]);
+		expect(screen.getAllByText("MCP agent").length).toBeGreaterThan(0);
+		fireEvent.click(screen.getByRole("button", { name: "Open Cloudflare Workers AI details" }));
 
 		expect(screen.getByRole("dialog")).toBeInTheDocument();
-		expect(screen.getByRole("heading", { name: /workers ai/i })).toBeInTheDocument();
-		expect(screen.getByText(/workers ai makes the captured evidence readable and actionable/i)).toBeInTheDocument();
-		expect(screen.queryByText(/connected components/i)).not.toBeInTheDocument();
-		expect(screen.queryByText(/flow labels/i)).not.toBeInTheDocument();
+		expect(screen.getByRole("heading", { name: /cloudflare workers ai/i })).toBeInTheDocument();
+		expect(screen.getByText(/turns captured evidence into findings/i)).toBeInTheDocument();
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 

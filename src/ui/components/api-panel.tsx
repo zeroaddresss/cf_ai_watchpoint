@@ -1,6 +1,6 @@
 import { Code2, Coins, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/components/ui/card";
+import { Separator } from "@/ui/components/ui/separator";
 
 type Props = {
 	curlSnippet: string;

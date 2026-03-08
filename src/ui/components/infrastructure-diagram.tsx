@@ -10,7 +10,7 @@ import {
 	Workflow,
 	type LucideIcon,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/ui/components/ui/dialog";
 
 type DiagramMode = "system" | "cycle";
 type SystemNodeId = "agent" | "workflow" | "browser" | "workers-ai" | "memory";

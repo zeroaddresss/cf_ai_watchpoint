@@ -26,9 +26,9 @@ _Typical flow_:
 
 ## 🎬 Demo
 
-[![Watchpoint demo preview](./demo-poster.png)](./demo.mp4)
+[![Watchpoint demo preview](./docs/demo-poster.png)](./docs/demo.mp4)
 
-Open [`demo.mp4`](./demo.mp4) directly if your Markdown viewer does not support rich media previews.
+Open [`demo.mp4`](./docs/demo.mp4) directly if your Markdown viewer does not support rich media previews.
 
 ## 🤔 Why it matters
 

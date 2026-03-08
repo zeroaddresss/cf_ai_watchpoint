@@ -17,9 +17,9 @@ This file includes the records of the prompts used to drive the implementation o
 
 *********************************************************************************
 
-I have initialized this repo (empty as of now, @resources.md only) and we'll build a Cloudflare-native project where we'll have to get the most out of Cloudflare developer tools, leveraging Cloudflare Agents, Workflows and more features that I will present you in detail.
+I have initialized this repo (empty as of now, @docs/resources.md only) and we'll build a Cloudflare-native project where we'll have to get the most out of Cloudflare developer tools, leveraging Cloudflare Agents, Workflows and more features that I will present you in detail.
 the idea is a paid AI web monitoring agent, i.e. instead of selling raw model access (providing LLM inference is something everyone could do), we sell a higher-level outcome: “check this site, remember its baseline behavior, detect regressions over time, and return a structured report”. from the user pov: a user should be able to create a "watcher" for a public website, run a baseline scan, store state over time, trigger rescans, and detect visible regressions between runs.
-it is crucial to use Cloudflare as the source of truth and use Cloudflare SDKs whenever possible (all resources provided in @resources.md):
+it is crucial to use Cloudflare as the source of truth and use Cloudflare SDKs whenever possible (all resources provided in @docs/resources.md):
 - use Cloudflare Agents SDK for the main agent runtime
 - use Durable Objects through Agents SDK for per-watch state
 - use Cloudflare Workflows for baseline and rescan orchestration
@@ -53,7 +53,7 @@ keep tests deterministic by preserving a separate fixture capture mode.
 
 *********************************************************************************
 
-awesome, all tests for the Browser rendering integration are passing and the implementation looks good to me. now, the orchestration is too trivial, we dont want to run rescans directly inside the Agent. instead we can leverage Cloudflare Workflows for executing the rescans remotely. note that the Agent should remain the source of truth for watch state, while the Workflows should take care of retries, waiting, and run execution. again, all needed documentation for workflows is provided in @resources.md
+awesome, all tests for the Browser rendering integration are passing and the implementation looks good to me. now, the orchestration is too trivial, we dont want to run rescans directly inside the Agent. instead we can leverage Cloudflare Workflows for executing the rescans remotely. note that the Agent should remain the source of truth for watch state, while the Workflows should take care of retries, waiting, and run execution. again, all needed documentation for workflows is provided in @docs/resources.md
 we also need to add tests asserting the following:
 - watch creation queues baseline work
 - manual rescan uses the same workflow path
@@ -63,7 +63,7 @@ lets move to plan mode and organize the work carefully, review and discuss desig
 
 *********************************************************************************
 
-the payment flow still feels prototype-level, we're lacking an actual payment challenge. it's crucial to be compliant to the x402 protocol: replace custom payment behavior with the official x402 flow for both HTTP and MCP. official documentation is very clear and provided in @resources.md . here's the checklist and criteria for this task, we need:
+the payment flow still feels prototype-level, we're lacking an actual payment challenge. it's crucial to be compliant to the x402 protocol: replace custom payment behavior with the official x402 flow for both HTTP and MCP. official documentation is very clear and provided in @docs/resources.md . here's the checklist and criteria for this task, we need:
 - paid HTTP watch creation must return a real `402` challenge when unpaid
 - paid MCP tools must use the same pricing source of truth as HTTP
 - keep a local dev bypass only for local testing, not as the main design

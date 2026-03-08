@@ -9,7 +9,7 @@ describe("InfrastructureDiagram", () => {
 		expect(screen.getByText("Watchpoint")).toBeInTheDocument();
 		expect(screen.queryByText("Component detail")).not.toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole("button", { name: "Open Workers AI details" }));
+		fireEvent.click(screen.getByRole("button", { name: "Open Cloudflare Workers AI details" }));
 
 		expect(screen.getByText("Component detail")).toBeInTheDocument();
 		expect(screen.getByRole("dialog")).toBeInTheDocument();

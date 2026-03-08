@@ -1,5 +1,5 @@
 import { AlertTriangle, CircleCheckBig, Info, OctagonX } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/ui/components/ui/alert";
 import type { DashboardNotice } from "../hooks/use-watch-dashboard";
 
 type NoticeVisual = {
