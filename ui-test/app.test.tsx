@@ -67,6 +67,12 @@ describe("App", () => {
 		expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "API" })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "Pricing" })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Open GitHub repository" })).toHaveAttribute(
+			"href",
+			"https://github.com/zeroaddresss/cf_ai_watchpoint",
+		);
+		expect(screen.getByRole("link", { name: "Open GitHub repository" })).toHaveAttribute("target", "_blank");
+		expect(screen.getByRole("link", { name: "Open GitHub repository" })).toHaveAttribute("rel", "noreferrer");
 		expect(screen.getByText("Watchpoint")).toBeInTheDocument();
 		expect(screen.getByText(/cloudflare-native monitoring loop/i)).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: "Demo" })).toHaveAttribute("aria-current", "page");
@@ -119,5 +125,8 @@ describe("App", () => {
 			expect(screen.getByText(/x402 http api/i)).toBeInTheDocument();
 		});
 		expect(screen.queryByRole("button", { name: /create demo watch/i })).not.toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Open GitHub repository" })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("aria-current", "page");
+		expect(screen.getByRole("link", { name: "Open GitHub repository" })).not.toHaveAttribute("aria-current");
 	});
 });

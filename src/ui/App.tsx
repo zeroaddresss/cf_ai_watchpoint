@@ -15,6 +15,7 @@ import { useWatchDashboard } from "./hooks/use-watch-dashboard";
 import { buildCurlSnippet } from "./lib/curl-snippet";
 
 const defaultTargetUrl = "https://watchpoint.local/regression";
+const githubRepositoryUrl = "https://github.com/zeroaddresss/cf_ai_watchpoint";
 
 type AppPath = "/demo" | "/dashboard" | "/api" | "/pricing";
 
@@ -271,13 +272,16 @@ function RouteNavigation({ currentPath, isDemoRoute }: { currentPath: AppPath; i
 			aria-label="Primary navigation"
 			className={
 				isDemoRoute
-					? "shell-card flex flex-wrap gap-2 p-2"
-					: "flex flex-wrap gap-2 rounded-[1.35rem] border border-[#eadfd4] bg-white/74 p-1.5 shadow-[0_12px_30px_rgba(84,64,43,0.05)]"
+					? "shell-card flex flex-wrap items-center gap-2 p-2"
+					: "flex flex-wrap items-center gap-2 rounded-[1.35rem] border border-[#eadfd4] bg-white/74 p-1.5 shadow-[0_12px_30px_rgba(84,64,43,0.05)]"
 			}
 		>
-			{appRoutes.map((route) => (
-				<RouteLink key={route.path} currentPath={currentPath} route={route} />
-			))}
+			<div className="flex flex-wrap items-center gap-2">
+				{appRoutes.map((route) => (
+					<RouteLink key={route.path} currentPath={currentPath} route={route} />
+				))}
+			</div>
+			<GitHubRepoLink />
 		</nav>
 	);
 }
@@ -316,6 +320,35 @@ function RouteLink({
 				{route.label}
 			</a>
 		</Button>
+	);
+}
+
+function GitHubRepoLink() {
+	return (
+		<Button
+			asChild
+			variant="ghost"
+			className="sm:ml-auto rounded-[1rem] border border-[#ead7c7] bg-[#fff8f1] px-4 text-[#45362b] shadow-[0_8px_20px_rgba(84,64,43,0.05)] hover:border-[#f1c9a5] hover:bg-[#fff2e6] hover:text-[#1f1813] focus-visible:border-[#f1c9a5] focus-visible:bg-[#fff2e6] focus-visible:text-[#1f1813]"
+		>
+			<a aria-label="Open GitHub repository" href={githubRepositoryUrl} rel="noreferrer" target="_blank">
+				<GitHubMark />
+				GitHub
+			</a>
+		</Button>
+	);
+}
+
+function GitHubMark() {
+	return (
+		<svg
+			aria-hidden="true"
+			className="size-4"
+			fill="currentColor"
+			viewBox="0 0 24 24"
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<path d="M12 1.5a10.5 10.5 0 0 0-3.32 20.46c.53.1.72-.23.72-.51v-1.8c-2.94.64-3.56-1.25-3.56-1.25-.48-1.22-1.17-1.54-1.17-1.54-.95-.65.07-.64.07-.64 1.05.08 1.61 1.08 1.61 1.08.94 1.6 2.45 1.14 3.05.87.09-.68.37-1.14.67-1.4-2.35-.27-4.82-1.18-4.82-5.26 0-1.16.42-2.12 1.09-2.87-.11-.27-.47-1.37.1-2.85 0 0 .89-.29 2.92 1.09a10.18 10.18 0 0 1 5.32 0c2.03-1.38 2.92-1.09 2.92-1.09.57 1.48.21 2.58.1 2.85.68.75 1.09 1.71 1.09 2.87 0 4.09-2.48 4.98-4.84 5.24.38.33.72.97.72 1.96v2.91c0 .28.19.61.73.51A10.5 10.5 0 0 0 12 1.5Z" />
+		</svg>
 	);
 }
 
